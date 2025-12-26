@@ -4,19 +4,9 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 import yfinance as yf
-import yaml
-import streamlit_authenticator as stauth
-from yaml.loader import SafeLoader
 from datetime import date
 
 st.set_page_config(page_title="Personal Finance HQ", layout="wide", page_icon="💰")
-
-# --- AUTH CHECK ---
-with open('config.yaml') as file: config = yaml.load(file, Loader=SafeLoader)
-authenticator = stauth.Authenticate(config['credentials'], config['cookie']['name'], config['cookie']['key'], config['cookie']['expiry_days'], config['preauthorized'])
-if st.session_state["authentication_status"] is not True:
-    st.warning("⛔ Access Denied. Please login on the Home page.")
-    st.stop()
 
 # --- 🧠 STATE MANAGER ---
 defaults = {

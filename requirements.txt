@@ -3,4 +3,3 @@ pandas
 plotly
 yfinance
 pyyaml
-streamlit-authenticator==0.3.3

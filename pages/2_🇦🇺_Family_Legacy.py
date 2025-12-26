@@ -3,16 +3,9 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import yfinance as yf
-import yaml
-import streamlit_authenticator as stauth
-from yaml.loader import SafeLoader
 from datetime import date, timedelta
 
 st.set_page_config(page_title="Family Bitcoin Office", layout="wide", page_icon="🇦🇺")
-
-with open('config.yaml') as file: config = yaml.load(file, Loader=SafeLoader)
-authenticator = stauth.Authenticate(config['credentials'], config['cookie']['name'], config['cookie']['key'], config['cookie']['expiry_days'], config['preauthorized'])
-if st.session_state["authentication_status"] is not True: st.warning("⛔ Access Denied."); st.stop()
 
 # --- 🧠 STATE MANAGER ---
 defaults = {
