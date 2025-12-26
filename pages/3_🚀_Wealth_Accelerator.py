@@ -81,7 +81,7 @@ with col_model:
         with st.expander("Configure Growth Rates", expanded=True):
             years = 50; default_data = [{"Year": y, "Growth %": 50 if y==1 else 15 if y==2 else -20 if y==3 else 12 if y<=10 else 7} for y in range(1, years + 1)]
             df_growth_input = pd.DataFrame(default_data)
-            edited_growth = st.data_editor(df_growth_input, height=200, use_container_width=True, hide_index=True, column_config={"Year": st.column_config.NumberColumn(disabled=True)}, key="wa_growth_editor")
+            edited_growth = st.data_editor(df_growth_input, height=200, width="stretch", hide_index=True, column_config={"Year": st.column_config.NumberColumn(disabled=True)}, key="wa_growth_editor")
     else:
         today = date.today()
         days_today = (today - GENESIS_DATE).days
@@ -135,6 +135,6 @@ with tab_chart:
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df['Year'], y=df['Total Invested'], mode='lines', name='Cash Invested', line=dict(color='#A9A9A9', width=2, dash='dash'), fill='tozeroy', fillcolor='rgba(169, 169, 169, 0.1)'))
     fig.add_trace(go.Scatter(x=df['Year'], y=df['Portfolio Value'], mode='lines', name='Portfolio Value', line=dict(color='#F7931A', width=4), fill='tonexty', fillcolor='rgba(247, 147, 26, 0.2)'))
-    fig.update_layout(title="The Bitcoin Effect", yaxis_title="Value (AUD)", height=500, hovermode="x unified"); st.plotly_chart(fig, use_container_width=True)
+    fig.update_layout(title="The Bitcoin Effect", yaxis_title="Value (AUD)", height=500, hovermode="x unified"); st.plotly_chart(fig, width="stretch")
 with tab_data:
-    st.dataframe(df.style.format({"BTC Price": "${:,.0f}", "BTC Stack": "{:,.4f}", "Total Invested": "${:,.0f}", "Portfolio Value": "${:,.0f}", "ROI (x)": "{:.2f}x"}), use_container_width=True)
+    st.dataframe(df.style.format({"BTC Price": "${:,.0f}", "BTC Stack": "{:,.4f}", "Total Invested": "${:,.0f}", "Portfolio Value": "${:,.0f}", "ROI (x)": "{:.2f}x"}), width="stretch")

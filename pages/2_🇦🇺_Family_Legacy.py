@@ -91,7 +91,7 @@ with col_model:
             years = 50
             default_data = [{"Year": y, "Growth %": 60 if y==1 else 15 if y==2 else -30 if y==3 else 10 if y==4 else 12 if y<=10 else 7} for y in range(1, years + 1)]
             df_growth_input = pd.DataFrame(default_data)
-            edited_growth = st.data_editor(df_growth_input, height=200, use_container_width=True, hide_index=True, column_config={"Year": st.column_config.NumberColumn(disabled=True)}, key="legacy_growth_editor")
+            edited_growth = st.data_editor(df_growth_input, height=200, width="stretch", hide_index=True, column_config={"Year": st.column_config.NumberColumn(disabled=True)}, key="legacy_growth_editor")
 
     else:
         st.info("🧮 **Formula:** $Price = 10^{-17} \\times days^{5.82}$")
@@ -120,7 +120,7 @@ with col_events:
     with st.expander("Edit Events Register", expanded=True):
         event_data = [{"Year": 10, "Amount": 200000}, {"Year": 12, "Amount": 200000}]
         df_events_input = pd.DataFrame(event_data)
-        edited_events = st.data_editor(df_events_input, num_rows="dynamic", height=200, use_container_width=True, hide_index=True, column_config={"Year": st.column_config.NumberColumn(min_value=1, max_value=50), "Amount": st.column_config.NumberColumn(format="$%d")}, key="legacy_events")
+        edited_events = st.data_editor(df_events_input, num_rows="dynamic", height=200, width="stretch", hide_index=True, column_config={"Year": st.column_config.NumberColumn(min_value=1, max_value=50), "Amount": st.column_config.NumberColumn(format="$%d")}, key="legacy_events")
 
 # --- CALCULATION ENGINE ---
 events_lookup = {}
@@ -180,15 +180,15 @@ with tab1:
         fig_asset.add_trace(go.Scatter(x=df['Year'], y=df['FI Target'], name=f"Safety Target", line=dict(color="#FFD700", width=2, dash='dash'), yaxis="y1"))
         fig_asset.add_trace(go.Scatter(x=df['Year'], y=df['BTC'], name="BTC Holdings", line=dict(color="#F7931A", width=3, dash='dot'), yaxis="y2"))
         fig_asset.update_layout(title="Solvency Check", yaxis=dict(title="AUD Value"), yaxis2=dict(title="BTC Count", overlaying="y", side="right"), height=450)
-        st.plotly_chart(fig_asset, use_container_width=True)
+        st.plotly_chart(fig_asset, width="stretch")
     with col_burn:
         fig_spend = go.Figure()
         fig_spend.add_trace(go.Scatter(x=df['Year'], y=df['Parent Cost'], stackgroup='one', name="Parents", line=dict(width=0, color='#636EFA')))
         fig_spend.add_trace(go.Scatter(x=df['Year'], y=df['Kids Cost'], stackgroup='one', name="Kids", line=dict(width=0, color='#EF553B')))
         fig_spend.add_trace(go.Scatter(x=df['Year'], y=df['Lump Sums'], stackgroup='one', name="One-Offs", line=dict(width=0, color='#FECB52')))
         fig_spend.add_trace(go.Scatter(x=df['Year'], y=df['Tax Paid'], stackgroup='one', name="Tax", line=dict(width=0, color='#A9A9A9')))
-        fig_spend.update_layout(title="Cash Flow Drain", height=450); st.plotly_chart(fig_spend, use_container_width=True)
+        fig_spend.update_layout(title="Cash Flow Drain", height=450); st.plotly_chart(fig_spend, width="stretch")
 
 with tab2:
     st.markdown("##### Detailed Simulation Ledger")
-    st.dataframe(df[['Year', 'BTC', 'Modeled Price', 'Value', 'Total Drawdown', 'Lump Sums', 'Tax Paid']].style.format({"BTC": "{:,.4f}", "Modeled Price": "${:,.0f}", "Value": "${:,.0f}", "Total Drawdown": "${:,.0f}", "Lump Sums": "${:,.0f}", "Tax Paid": "${:,.0f}"}), use_container_width=True)
+    st.dataframe(df[['Year', 'BTC', 'Modeled Price', 'Value', 'Total Drawdown', 'Lump Sums', 'Tax Paid']].style.format({"BTC": "{:,.4f}", "Modeled Price": "${:,.0f}", "Value": "${:,.0f}", "Total Drawdown": "${:,.0f}", "Lump Sums": "${:,.0f}", "Tax Paid": "${:,.0f}"}), width="stretch")
