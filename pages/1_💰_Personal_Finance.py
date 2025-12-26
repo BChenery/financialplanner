@@ -8,11 +8,38 @@ from datetime import date
 
 st.set_page_config(page_title="Personal Finance HQ", layout="wide", page_icon="💰")
 
+# --- POWER LAW HELPERS ---
+GENESIS_DATE = date(2009, 1, 3)
+PL_SD_LOG = 0.35  # Standard deviation in log10 space
+
+def get_power_law_price(days_since_genesis, aud_usd=0.65):
+    """Calculate median power law price in AUD"""
+    return ((10**-17) * (days_since_genesis**5.82)) / aud_usd
+
+def sd_to_multiplier(sd):
+    """Convert standard deviations to price multiplier"""
+    return 10 ** (sd * PL_SD_LOG)
+
+def price_to_sd(current_price, median_price):
+    """Calculate how many SDs above/below median"""
+    if median_price <= 0 or current_price <= 0:
+        return 0
+    return np.log10(current_price / median_price) / PL_SD_LOG
+
+def get_sd_label(sd):
+    """Get human-readable label for SD value"""
+    if sd <= -1.5: return "Very Conservative"
+    elif sd <= -0.5: return "Conservative"
+    elif sd <= 0.5: return "Median"
+    elif sd <= 1.5: return "Optimistic"
+    else: return "Very Optimistic"
+
 # --- 🧠 STATE MANAGER ---
 defaults = {
     "shared_btc_price": 150000.0,
     "shared_use_live": True,
     "shared_inflation": 0.03,
+    "shared_pl_scenario": 0.0,
     "pf_cash_interest": 0.04,
     "pf_salary": 180000.0,
     "pf_btc_qty": 5.0,
@@ -117,17 +144,29 @@ with tab_runway:
                 df_growth_input = pd.DataFrame(default_data)
                 edited_growth = st.data_editor(df_growth_input, height=200, use_container_width=True, hide_index=True, column_config={"Year": st.column_config.NumberColumn(disabled=True)}, key="pf_growth_editor")
         else:
-            st.info("Using Power Law (Anchored)")
-            genesis_date = date(2009, 1, 3); today = date.today(); days_today = (today - genesis_date).days
-            raw_pl_aud = ((10**-17) * (days_today**5.82)) / 0.65
-            anchor_ratio = btc_price / raw_pl_aud
-            st.caption(f"Anchored Premium: {anchor_ratio:.2f}x")
+            today = date.today()
+            days_today = (today - GENESIS_DATE).days
+            median_price = get_power_law_price(days_today)
+            current_sd = price_to_sd(btc_price, median_price)
 
+            st.caption(f"📍 Current: **{current_sd:+.2f} SD** ({get_sd_label(current_sd)}) | Median: ${median_price:,.0f}")
+
+            pl_scenario = st.slider(
+                "Projection Scenario (Standard Deviations)",
+                min_value=-2.0, max_value=2.0, step=0.25,
+                key="shared_pl_scenario",
+                help="Project future prices along a specific band of the Power Law. 0 = Median, negative = conservative, positive = optimistic"
+            )
+            scenario_label = get_sd_label(pl_scenario)
+            multiplier = sd_to_multiplier(pl_scenario)
+            st.caption(f"📈 Projecting along: **{pl_scenario:+.2f} SD** ({scenario_label}) = {multiplier:.2f}x median")
+
+    today = date.today()
+    start_days = (today - GENESIS_DATE).days
     history = []
     curr_btc_price = btc_price
     curr_cash = cash_aud
-    history.append({"Year": date.today().year, "BTC Price": btc_price, "Total Net Worth": total_nw, "Bitcoin Value": btc_val, "Cash/Savings": cash_aud})
-    start_days = (today - genesis_date).days
+    history.append({"Year": today.year, "BTC Price": btc_price, "Total Net Worth": total_nw, "Bitcoin Value": btc_val, "Cash/Savings": cash_aud})
 
     for y in range(1, years_to_model + 1):
         if model_mode == "Manual Cycles":
@@ -136,7 +175,8 @@ with tab_runway:
             curr_btc_price = curr_btc_price * (1 + g)
         else:
             future_days = start_days + (y * 365)
-            curr_btc_price = (((10**-17) * (future_days**5.82)) / 0.65) * anchor_ratio
+            median_future = get_power_law_price(future_days)
+            curr_btc_price = median_future * sd_to_multiplier(pl_scenario)
 
         curr_cash = curr_cash * (1 + cash_interest)
         curr_cash += annual_savings * ((1 + inflation_rate) ** y)

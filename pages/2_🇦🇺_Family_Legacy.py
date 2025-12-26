@@ -7,11 +7,38 @@ from datetime import date, timedelta
 
 st.set_page_config(page_title="Family Bitcoin Office", layout="wide", page_icon="🇦🇺")
 
+# --- POWER LAW HELPERS ---
+GENESIS_DATE = date(2009, 1, 3)
+PL_SD_LOG = 0.35  # Standard deviation in log10 space
+
+def get_power_law_price(days_since_genesis, aud_usd=0.65):
+    """Calculate median power law price in AUD"""
+    return ((10**-17) * (days_since_genesis**5.82)) / aud_usd
+
+def sd_to_multiplier(sd):
+    """Convert standard deviations to price multiplier"""
+    return 10 ** (sd * PL_SD_LOG)
+
+def price_to_sd(current_price, median_price):
+    """Calculate how many SDs above/below median"""
+    if median_price <= 0 or current_price <= 0:
+        return 0
+    return np.log10(current_price / median_price) / PL_SD_LOG
+
+def get_sd_label(sd):
+    """Get human-readable label for SD value"""
+    if sd <= -1.5: return "Very Conservative"
+    elif sd <= -0.5: return "Conservative"
+    elif sd <= 0.5: return "Median"
+    elif sd <= 1.5: return "Optimistic"
+    else: return "Very Optimistic"
+
 # --- 🧠 STATE MANAGER ---
 defaults = {
     "shared_btc_price": 150000.0,
     "shared_use_live": True,
     "shared_inflation": 0.03,
+    "shared_pl_scenario": 0.0,
     "legacy_btc_holdings": 10.0,
     "legacy_parents_spend": 120000.0,
     "legacy_kid_allowance": 60000.0,
@@ -68,12 +95,24 @@ with col_model:
 
     else:
         st.info("🧮 **Formula:** $Price = 10^{-17} \\times days^{5.82}$")
-        c1, c2 = st.columns(2)
-        aud_usd = c1.slider("AUD/USD Exchange Rate", 0.50, 1.0, 0.65, 0.01, key="legacy_fx")
-        genesis_date = date(2009, 1, 3); today = date.today(); days_today = (today - genesis_date).days
-        raw_pl_aud = ((10**-17) * (days_today**5.82)) / aud_usd
-        anchor_ratio = start_price / raw_pl_aud
-        c2.metric("Implied Power Law Multiplier", f"{anchor_ratio:.2f}x", help="Maintains deviation from the raw formula.")
+        aud_usd = st.slider("AUD/USD Exchange Rate", 0.50, 1.0, 0.65, 0.01, key="legacy_fx")
+
+        today = date.today()
+        days_today = (today - GENESIS_DATE).days
+        median_price = get_power_law_price(days_today, aud_usd)
+        current_sd = price_to_sd(start_price, median_price)
+
+        st.caption(f"📍 Current: **{current_sd:+.2f} SD** ({get_sd_label(current_sd)}) | Median: ${median_price:,.0f}")
+
+        pl_scenario = st.slider(
+            "Projection Scenario (Standard Deviations)",
+            min_value=-2.0, max_value=2.0, step=0.25,
+            key="shared_pl_scenario",
+            help="Project future prices along a specific band of the Power Law. 0 = Median, negative = conservative, positive = optimistic"
+        )
+        scenario_label = get_sd_label(pl_scenario)
+        multiplier = sd_to_multiplier(pl_scenario)
+        st.caption(f"📈 Projecting along: **{pl_scenario:+.2f} SD** ({scenario_label}) = {multiplier:.2f}x median")
 
 with col_events:
     st.subheader("🎁 Bank of Mum & Dad")
@@ -87,7 +126,8 @@ with col_events:
 events_lookup = {}
 if not edited_events.empty: events_lookup = edited_events.groupby('Year')['Amount'].sum().to_dict()
 
-genesis_date = date(2009, 1, 3); today = date.today(); start_days = (today - genesis_date).days
+today = date.today()
+start_days = (today - GENESIS_DATE).days
 history = []; curr_btc = initial_btc; curr_price = start_price; status = "Sustainable"; fail_year = None; years = 50; fi_year = "Not in 50 Years"; fi_found = False
 
 history.append({"Year": 0, "BTC": curr_btc, "Modeled Price": curr_price, "Value": curr_btc*curr_price, "Parent Cost": 0, "Kids Cost": 0, "Lump Sums": 0, "Tax Paid": 0, "Total Drawdown": 0, "FI Target": (parents_spend) * safe_withdraw_rate, "Status": "Sustainable"})
@@ -98,8 +138,9 @@ for y in range(1, years + 1):
         except: g = 0.05
         prev_price = history[-1]['Modeled Price']; curr_price = prev_price * (1 + g)
     else:
-        future_days = start_days + (y * 365); raw_price_aud = ((10**-17) * (future_days**5.82)) / aud_usd
-        curr_price = raw_price_aud * anchor_ratio
+        future_days = start_days + (y * 365)
+        median_future = get_power_law_price(future_days, aud_usd)
+        curr_price = median_future * sd_to_multiplier(pl_scenario)
 
     idx_rate = (1 + inflation) ** y
     cost_parents = parents_spend * idx_rate
